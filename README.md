@@ -1,1 +1,1 @@
-xsoldier123.github.io/junk23/
+https://www.xsoldier123.github.io/junk23/
