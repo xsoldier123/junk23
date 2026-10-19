@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Device Shield</title>
+<style>
+:root{
+  --bg:#06121c; --bg2:#0c2233; --ink:#e8f4fb; --mute:#7d9bb0;
+  --blue:#3fb8ff; --green:#4dffa8; --ring:rgba(63,184,255,.25);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;
+  color:var(--ink);
+  background:radial-gradient(120% 80% at 50% 0%,var(--bg2),var(--bg) 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:max(28px,env(safe-area-inset-top)) 20px max(28px,env(safe-area-inset-bottom));
+  overflow:hidden;
+}
+header{text-align:center;transition:opacity .6s,transform .6s}
+header h1{font-size:1.35rem;letter-spacing:.04em;font-weight:700}
+header p{color:var(--mute);font-size:.9rem;margin-top:6px}
+
+main{position:relative;width:min(78vw,340px);aspect-ratio:1;display:grid;place-items:center}
+
+/* radar rings */
+.ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--ring);opacity:0}
+.idle .ring{animation:pulse 3.2s ease-out infinite}
+.idle .ring:nth-child(2){animation-delay:1.06s}
+.idle .ring:nth-child(3){animation-delay:2.12s}
+@keyframes pulse{0%{transform:scale(.72);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+
+/* sweep */
+.sweep{position:absolute;inset:-6%;border-radius:50%;opacity:0;
+  background:conic-gradient(from 0deg,transparent 0 70%,rgba(63,184,255,.55));
+  -webkit-mask:radial-gradient(circle,transparent 46%,#000 47%);mask:radial-gradient(circle,transparent 46%,#000 47%);
+  transition:opacity .5s}
+.scanning .sweep{opacity:1;animation:spin 1.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* giant button */
+#scanBtn{
+  position:relative;width:72%;aspect-ratio:1;border:0;border-radius:50%;cursor:pointer;
+  color:#04202e;font:800 1.5rem "Trebuchet MS",system-ui,sans-serif;letter-spacing:.02em;
+  background:radial-gradient(circle at 35% 28%,#a6e6ff,var(--blue) 55%,#1b7fc4);
+  box-shadow:0 0 0 8px rgba(63,184,255,.12),0 18px 60px rgba(63,184,255,.45),inset 0 -10px 24px rgba(0,60,110,.35);
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .5s,background .6s,opacity .4s;
+  display:grid;place-items:center;z-index:2;
+}
+#scanBtn:hover{transform:scale(1.04)}
+#scanBtn:active{transform:scale(.95)}
+#scanBtn:focus-visible{outline:3px solid #fff;outline-offset:6px}
+.scanning #scanBtn{transform:scale(.8);cursor:default;box-shadow:0 0 0 8px rgba(63,184,255,.12),0 0 40px rgba(63,184,255,.3);background:radial-gradient(circle at 35% 28%,#17415a,#0d2a3d)}
+.scanning #scanBtn,.done #scanBtn{color:var(--ink)}
+.done #scanBtn{transform:scale(1);background:radial-gradient(circle at 35% 28%,#b8ffd9,var(--green) 55%,#16a763);
+  box-shadow:0 0 0 8px rgba(77,255,168,.15),0 18px 70px rgba(77,255,168,.5);cursor:default}
+#btnLabel{transition:opacity .3s}
+#pct{display:none;font-size:2.6rem;font-weight:800;font-variant-numeric:tabular-nums}
+.scanning #btnLabel,.done #btnLabel{display:none}
+.scanning #pct{display:block}
+
+/* check mark */
+#check{display:none;width:58%}
+.done #check{display:block}
+#check path{stroke:#04321c;stroke-width:9;fill:none;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:90;stroke-dashoffset:90;animation:draw .7s .25s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.done .ring{border-color:rgba(77,255,168,.35);animation:pulse 2.4s ease-out infinite}
+.done .ring:nth-child(2){animation-delay:.8s}.done .ring:nth-child(3){animation-delay:1.6s}
+
+/* bottom panel */
+footer{width:min(92vw,420px);min-height:190px;text-align:center}
+#status{font-size:1.05rem;min-height:1.5em;transition:opacity .3s}
+.bar{height:6px;border-radius:6px;background:rgba(255,255,255,.08);margin:14px 0 16px;overflow:hidden;opacity:0;transition:opacity .4s}
+.scanning .bar{opacity:1}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:6px}
+ul{list-style:none;display:grid;gap:8px;text-align:left}
+li{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);
+  color:var(--mute);font-size:.92rem;opacity:0;transform:translateY(10px);transition:all .5s}
+li.show{opacity:1;transform:none}
+li b{margin-left:auto;font-weight:600;color:var(--mute)}
+li .dot{width:10px;height:10px;border-radius:50%;background:var(--blue);flex:none;animation:blink 1s infinite}
+li.ok{color:var(--ink)}
+li.ok b{color:var(--green)}
+li.ok .dot{background:var(--green);animation:none}
+@keyframes blink{50%{opacity:.25}}
+
+.done #status{font-size:1.35rem;font-weight:700;color:var(--green);animation:pop .6s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:none;opacity:1}}
+#again{display:none;margin:16px auto 0;background:none;border:1.5px solid var(--ring);color:var(--ink);
+  padding:10px 22px;border-radius:30px;font:600 .9rem inherit;font-family:inherit;cursor:pointer;transition:background .3s}
+#again:hover{background:rgba(255,255,255,.08)}
+.done #again{display:block;animation:pop .6s .3s both}
+
+/* particles */
+canvas{position:fixed;inset:0;pointer-events:none;z-index:5}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Device Shield</h1>
+  <p id="sub">Tap to check your device</p>
+</header>
+
+<main id="stage" class="idle">
+  <span class="ring"></span><span class="ring"></span><span class="ring"></span>
+  <span class="sweep"></span>
+  <button id="scanBtn" aria-label="Scan my device">
+    <span id="btnLabel">SCAN<br>NOW</span>
+    <span id="pct">0%</span>
+    <svg id="check" viewBox="0 0 100 100"><path d="M24 53 L43 72 L77 31"/></svg>
+  </button>
+</main>
+
+<footer>
+  <p id="status">&nbsp;</p>
+  <div class="bar"><i id="fill"></i></div>
+  <ul id="list"></ul>
+  <button id="again">Scan again</button>
+</footer>
+
+<canvas id="fx"></canvas>
+
+<script>
+(function(){
+  var DURATION = 10000; // 10 seconds
+  var stage = document.getElementById('stage');
+  var btn = document.getElementById('scanBtn');
+  var pct = document.getElementById('pct');
+  var fill = document.getElementById('fill');
+  var status = document.getElementById('status');
+  var list = document.getElementById('list');
+  var sub = document.getElementById('sub');
+  var again = document.getElementById('again');
+
+  var steps = [
+    {at:0,    t:'Checking system files',   r:'Clean'},
+    {at:25,   t:'Scanning installed apps', r:'Safe'},
+    {at:50,   t:'Looking for malware',     r:'None found'},
+    {at:75,   t:'Checking network safety', r:'Secure'}
+  ];
+  var msgs = ['Starting scan…','Checking system files…','Scanning installed apps…','Looking for malware…','Checking network safety…','Finishing up…'];
+  var running = false, raf;
+
+  function reset(){
+    stage.className = 'idle';
+    list.innerHTML = '';
+    fill.style.width = '0';
+    status.innerHTML = '&nbsp;';
+    sub.textContent = 'Tap to check your device';
+    btn.disabled = false;
+    var p = document.querySelector('#check path');
+    p.style.animation = 'none'; void p.offsetWidth; p.style.animation = '';
+  }
+
+  function start(){
+    if(running) return;
+    running = true; btn.disabled = true;
+    stage.className = 'scanning';
+    sub.textContent = 'Scanning… keep this screen open';
+    list.innerHTML = '';
+    var items = steps.map(function(s){
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="dot"></span>' + s.t + '<b>Checking…</b>';
+      list.appendChild(li);
+      return li;
+    });
+    var t0 = performance.now(), shown = -1, doneUpTo = -1;
+
+    function tick(now){
+      var p = Math.min((now - t0) / DURATION, 1);
+      var v = Math.round(p * 100);
+      pct.textContent = v + '%';
+      fill.style.width = (p * 100) + '%';
+      status.textContent = msgs[Math.min(Math.floor(p * msgs.length), msgs.length - 1)];
+      steps.forEach(function(s,i){
+        if(v >= s.at && shown < i){ shown = i; items[i].classList.add('show'); }
+        var end = i < steps.length - 1 ? steps[i+1].at : 98;
+        if(v >= end - 4 && doneUpTo < i){
+          doneUpTo = i;
+          items[i].classList.add('ok');
+          items[i].querySelector('b').textContent = s.r;
+        }
+      });
+      if(p < 1){ raf = requestAnimationFrame(tick); } else { finish(items); }
+    }
+    raf = requestAnimationFrame(tick);
+  }
+
+  function finish(items){
+    items.forEach(function(li,i){
+      li.classList.add('show','ok');
+      li.querySelector('b').textContent = steps[i].r;
+    });
+    stage.className = 'done';
+    status.textContent = 'Congratulations! Your device is safe.';
+    sub.textContent = 'No threats found';
+    running = false;
+    confetti();
+  }
+
+  btn.addEventListener('click', start);
+  again.addEventListener('click', reset);
+
+  /* confetti burst */
+  var cv = document.getElementById('fx'), cx = cv.getContext('2d'), bits = [];
+  function size(){ cv.width = innerWidth; cv.height = innerHeight; }
+  size(); addEventListener('resize', size);
+  function confetti(){
+    var colors = ['#4dffa8','#3fb8ff','#ffffff','#b8ffd9'];
+    var ox = cv.width/2, oy = cv.height*0.36;
+    for(var i=0;i<90;i++){
+      var a = Math.random()*Math.PI*2, s = 3 + Math.random()*7;
+      bits.push({x:ox,y:oy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-3,r:2+Math.random()*3,c:colors[i%4],l:1});
+    }
+    loop();
+  }
+  function loop(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    bits.forEach(function(b){
+      b.x+=b.vx; b.y+=b.vy; b.vy+=.16; b.vx*=.99; b.l-=.012;
+      cx.globalAlpha=Math.max(b.l,0); cx.fillStyle=b.c;
+      cx.beginPath(); cx.arc(b.x,b.y,b.r,0,7); cx.fill();
+    });
+    bits = bits.filter(function(b){return b.l>0});
+    if(bits.length) requestAnimationFrame(loop); else cx.clearRect(0,0,cv.width,cv.height);
+  }
+})();
+</script>
+</body>
+</html>
